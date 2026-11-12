@@ -107,6 +107,8 @@ var methodPolicies = map[string]MethodPolicy{
 	servicePath + "SubscribeEvents":            {Level: AuthzLevelSessionHolder, Action: "following events"},
 	servicePath + "GetEvents":                  {Level: AuthzLevelSessionHolder, Action: "reading events"},
 	servicePath + "ListNetworks":               {Level: AuthzLevelSessionHolder, Action: "listing networks"},
+	servicePath + "GetSplitTunnel":             {Level: AuthzLevelSessionHolder, Action: "reading split tunnel settings"},
+	servicePath + "SetSplitTunnel":             {Level: AuthzLevelSessionHolder, Audit: true, Action: "changing split tunnel settings"},
 	servicePath + "SelectNetworks":             {Level: AuthzLevelSessionHolder, Audit: true, Action: "selecting networks"},
 	servicePath + "DeselectNetworks":           {Level: AuthzLevelSessionHolder, Audit: true, Action: "deselecting networks"},
 	servicePath + "ForwardingRules":            {Level: AuthzLevelSessionHolder, Action: "listing forwarding rules"},
