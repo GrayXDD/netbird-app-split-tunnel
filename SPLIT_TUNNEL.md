@@ -4,8 +4,8 @@
 
 ## Как пользоваться
 
-- **UI:** NetBird → Настройки → вкладка **«Приложения»**:
-  - режим: «Через NetBird только выбранные» (include) / «всё, кроме выбранных» (exclude) / выключено;
+- **UI:** главный экран → **«Туннелирование приложений»** (строка внизу простого вида / вкладка «Приложения» в расширенном):
+  - тумблер вкл/выкл в заголовке (список и режим переживают выключение); режим: «Через NetBird только выбранные» (include) / «всё, кроме выбранных» (exclude);
   - добавление: кнопка **«+»** открывает диалог выбора exe (как в Amnezia), поле поиска даёт подсказки по запущенным процессам;
   - «Применить» — настройки применяются к живому подключению (при включённом демоне — на лету, без рестарта).
 - **CLI:** `netbird apps add opera.exe telegram.exe` / `apps remove` / `apps list` / `apps mode include|exclude|off`.
@@ -24,7 +24,7 @@
    - *bypass* — пакет инжектится в отдельный gVisor-стек `client/firewall/uspfilter/bypass`: TCP терминируется в userspace и переизлучается сокетом, привязанным к **физическому интерфейсу** (`IP_UNICAST_IF`, готовый механизм самоисключения самого демона) — петли маршрутов нет. Ответы пишутся в raw TUN обратно хосту.
 4. **Настройки** — RPC `Get/SetSplitTunnel` демона (права не нужны: пишет daemon), hot-apply через `Engine.ApplySplitTunnelNow`.
 
-Ключевые пакеты: `client/internal/split`, `client/firewall/uspfilter/bypass`, `client/firewall/uspfilter/split.go`, `client/internal/split_wiring.go`, `client/ui/services/split_tunnel.go`, вкладка `client/ui/frontend/src/modules/settings/SettingsApps.tsx`.
+Ключевые пакеты: `client/internal/split`, `client/firewall/uspfilter/bypass`, `client/firewall/uspfilter/split.go`, `client/internal/split_wiring.go`, `client/ui/services/split_tunnel.go`, раздел `client/ui/frontend/src/modules/split/` (главный экран).
 
 ## Ограничения v1
 

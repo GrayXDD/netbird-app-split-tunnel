@@ -5,7 +5,6 @@ import { UpdateBadge } from "@/modules/auto-update/UpdateBadge.tsx";
 import { useClientVersion } from "@/contexts/ClientVersionContext.tsx";
 import { useRestrictions } from "@/contexts/RestrictionsContext.tsx";
 import {
-    AppWindowIcon,
     BoltIcon,
     InfoIcon,
     LifeBuoyIcon,
@@ -42,11 +41,6 @@ export const SettingsNavigation = () => {
                             value={"network"}
                             icon={NetworkIcon}
                             title={t("settings.tabs.network")}
-                        />
-                        <VerticalTabs.Trigger
-                            value={"apps"}
-                            icon={AppWindowIcon}
-                            title={t("settings.tabs.apps")}
                         />
                         <VerticalTabs.Trigger
                             value={"security"}

@@ -375,6 +375,10 @@
         "message": "{active} of {total} active",
         "description": "Sub-label under Resources showing how many are active. {active} and {total} are numbers; keep both."
     },
+    "nav.apps.title": {
+        "message": "Applications",
+        "description": "Navigation label for the Applications section (per-app split tunnel)."
+    },
     "nav.exitNode.title": {
         "message": "Exit Nodes",
         "description": "Navigation label for the Exit Nodes section."
@@ -674,10 +678,6 @@
     "settings.tabs.network": {
         "message": "Network",
         "description": "Settings tab label: Network. Keep short."
-    },
-    "settings.tabs.apps": {
-        "message": "Applications",
-        "description": "Settings tab label: Applications (per-app split tunnel). Keep short."
     },
     "settings.tabs.security": {
         "message": "Security",
@@ -1739,13 +1739,21 @@
         "message": "Choose which applications go through NetBird and which ones connect directly.",
         "description": "Help text under the Tunneled Applications heading."
     },
+    "apps.split.entry.title": {
+        "message": "App split tunneling",
+        "description": "Entry row on the main screen that opens the per-app split tunnel section."
+    },
+    "apps.split.status.on": {
+        "message": "On · {count}",
+        "description": "Badge on the main-screen entry row when split tunneling is on. {count} is the number of selected applications; keep it."
+    },
+    "apps.split.status.off": {
+        "message": "Off",
+        "description": "Badge on the main-screen entry row when split tunneling is off."
+    },
     "apps.split.mode.label": {
         "message": "Mode",
         "description": "Label for the per-app split tunnel mode selector."
-    },
-    "apps.split.mode.off": {
-        "message": "Off (regular NetBird)",
-        "description": "Split tunnel mode: off, all traffic follows the regular NetBird routing."
     },
     "apps.split.mode.include": {
         "message": "Through NetBird: only the selected apps",
@@ -1775,9 +1783,9 @@
         "message": "Nothing selected yet",
         "description": "Empty state shown when no applications are selected."
     },
-    "apps.split.selected": {
-        "message": "Selected applications",
-        "description": "Label above the list of selected applications."
+    "apps.split.search.placeholder": {
+        "message": "Search applications",
+        "description": "Placeholder in the field filtering the list of selected applications."
     },
     "apps.split.remove": {
         "message": "Remove {name}",

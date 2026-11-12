@@ -281,6 +281,9 @@
     "nav.resources.description": {
         "message": "{active} из {total} активно"
     },
+    "nav.apps.title": {
+        "message": "Приложения"
+    },
     "nav.exitNode.title": {
         "message": "Выходные узлы"
     },
@@ -505,9 +508,6 @@
     },
     "settings.tabs.network": {
         "message": "Сеть"
-    },
-    "settings.tabs.apps": {
-        "message": "Приложения"
     },
     "settings.tabs.security": {
         "message": "Безопасность"
@@ -1304,11 +1304,17 @@
     "apps.split.description": {
         "message": "Выберите, какие приложения ходят через NetBird, а какие — напрямую"
     },
+    "apps.split.entry.title": {
+        "message": "Туннелирование приложений"
+    },
+    "apps.split.status.on": {
+        "message": "Вкл · {count}"
+    },
+    "apps.split.status.off": {
+        "message": "Выкл"
+    },
     "apps.split.mode.label": {
         "message": "Режим"
-    },
-    "apps.split.mode.off": {
-        "message": "Выключено (обычный NetBird)"
     },
     "apps.split.mode.include": {
         "message": "Через NetBird: только выбранные"
@@ -1331,8 +1337,8 @@
     "apps.split.empty": {
         "message": "Пока ничего не выбрано"
     },
-    "apps.split.selected": {
-        "message": "Выбранные приложения"
+    "apps.split.search.placeholder": {
+        "message": "Поиск приложений"
     },
     "apps.split.remove": {
         "message": "Удалить {name}"

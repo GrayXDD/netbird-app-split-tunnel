@@ -1,6 +1,6 @@
 import { type ComponentType, type KeyboardEvent, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Layers3Icon, type LucideProps, MonitorSmartphoneIcon } from "lucide-react";
+import { AppWindowIcon, Layers3Icon, type LucideProps, MonitorSmartphoneIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useNavSection, type NavSection } from "@/contexts/NavSectionContext";
 import { useStatus } from "@/contexts/StatusContext";
@@ -41,6 +41,11 @@ export const Navigation = () => {
             icon: Layers3Icon,
         });
     }
+    tabs.push({
+        value: "apps",
+        label: t("nav.apps.title"),
+        icon: AppWindowIcon,
+    });
 
     const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 

@@ -6,6 +6,7 @@ import { Navigation } from "@/modules/main/advanced/Navigation.tsx";
 import { cn } from "@/lib/cn";
 import { NavSectionProvider, useNavSection } from "@/contexts/NavSectionContext";
 import { ViewModeProvider, useViewMode } from "@/contexts/ViewModeContext";
+import { SplitTunnelProvider } from "@/contexts/SplitTunnelContext";
 import { useEffect } from "react";
 import { NotConnectedState } from "@/components/empty-state/NotConnectedState";
 import { useStatus } from "@/contexts/StatusContext";
@@ -15,23 +16,33 @@ import { NetworksProvider } from "@/contexts/NetworksContext";
 import { PeerDetailProvider, usePeerDetail } from "@/contexts/PeerDetailContext";
 import { useRestrictions } from "@/contexts/RestrictionsContext";
 import { PeerDetailPanel } from "@/modules/main/advanced/peers/PeerDetailPanel";
+import { SplitTunnelPanel } from "@/modules/split/SplitTunnelPanel.tsx";
+import { SplitTunnelStatusRow } from "@/modules/split/SplitTunnelStatusRow.tsx";
 import { isWindows } from "@/lib/platform.ts";
 
 export const MainPage = () => {
     return (
         <ViewModeProvider>
             <MainHeader />
-            <NetworksProvider>
-                <PeerDetailProvider>
-                    <MainBody />
-                </PeerDetailProvider>
-            </NetworksProvider>
+            {/* One provider above both views so split tunnel state survives flips. */}
+            <SplitTunnelProvider>
+                <NetworksProvider>
+                    <PeerDetailProvider>
+                        {/* Mounted for both views so the simple view can select a section
+                            before flipping into the advanced view. */}
+                        <NavSectionProvider>
+                            <MainBody />
+                        </NavSectionProvider>
+                    </PeerDetailProvider>
+                </NetworksProvider>
+            </SplitTunnelProvider>
         </ViewModeProvider>
     );
 };
 
 const MainBody = () => {
     const { viewMode, setViewMode } = useViewMode();
+    const { setSection } = useNavSection();
     const { mdm, features } = useRestrictions();
 
     // Force flip the view if MDM disabled advanced
@@ -42,6 +53,11 @@ const MainBody = () => {
     }, [mdm.disableAdvancedView, viewMode, setViewMode]);
 
     const isAdvanced = viewMode === "advanced";
+
+    const openSplitTunnel = () => {
+        setSection("apps");
+        setViewMode("advanced");
+    };
 
     return (
         <main className={"wails-draggable flex min-h-0 flex-1"}>
@@ -54,17 +70,16 @@ const MainBody = () => {
                 )}
             >
                 <MainConnectionStatusSwitch />
-                {!features.disableNetworks && (
-                    <div className={"wails-no-draggable absolute inset-x-5 bottom-5"}>
-                        <MainExitNodeSwitcher />
-                    </div>
-                )}
+                <div
+                    className={"wails-no-draggable absolute inset-x-5 bottom-5 flex flex-col gap-2"}
+                >
+                    {!isAdvanced && !mdm.disableAdvancedView && (
+                        <SplitTunnelStatusRow onClick={openSplitTunnel} />
+                    )}
+                    {!features.disableNetworks && <MainExitNodeSwitcher />}
+                </div>
             </div>
-            {isAdvanced && (
-                <NavSectionProvider>
-                    <AdvancedAppRightPanel />
-                </NavSectionProvider>
-            )}
+            {isAdvanced && <AdvancedAppRightPanel />}
         </main>
     );
 };
@@ -102,6 +117,7 @@ const AdvancedAppRightPanel = () => {
                 >
                     {section === "peers" && <Peers />}
                     {section === "networks" && <Networks />}
+                    {section === "apps" && <SplitTunnelPanel />}
                 </div>
             </div>
             {!isConnected && (
