@@ -675,6 +675,10 @@
         "message": "Network",
         "description": "Settings tab label: Network. Keep short."
     },
+    "settings.tabs.apps": {
+        "message": "Applications",
+        "description": "Settings tab label: Applications (per-app split tunnel). Keep short."
+    },
     "settings.tabs.security": {
         "message": "Security",
         "description": "Settings tab label: Security. Keep short."
@@ -1726,6 +1730,58 @@
     "networks.bulk.disableAll": {
         "message": "Disable all",
         "description": "Button to disable all resources. Keep short."
+    },
+    "apps.split.title": {
+        "message": "Tunneled Applications",
+        "description": "Section heading on the Applications settings tab: per-app split tunnel."
+    },
+    "apps.split.description": {
+        "message": "Choose which applications go through NetBird and which ones connect directly.",
+        "description": "Help text under the Tunneled Applications heading."
+    },
+    "apps.split.mode.label": {
+        "message": "Mode",
+        "description": "Label for the per-app split tunnel mode selector."
+    },
+    "apps.split.mode.off": {
+        "message": "Off (regular NetBird)",
+        "description": "Split tunnel mode: off, all traffic follows the regular NetBird routing."
+    },
+    "apps.split.mode.include": {
+        "message": "Through NetBird: only the selected apps",
+        "description": "Split tunnel mode: only the selected applications go through the tunnel."
+    },
+    "apps.split.mode.exclude": {
+        "message": "Through NetBird: everything except the selected apps",
+        "description": "Split tunnel mode: everything goes through the tunnel except the selected applications."
+    },
+    "apps.split.add.label": {
+        "message": "Add application",
+        "description": "Label above the search field used to add an application."
+    },
+    "apps.split.add.placeholder": {
+        "message": "Search running apps or type an executable name…",
+        "description": "Placeholder in the add-application search field."
+    },
+    "apps.split.empty": {
+        "message": "Nothing selected yet",
+        "description": "Empty state shown when no applications are selected."
+    },
+    "apps.split.selected": {
+        "message": "Selected applications",
+        "description": "Label above the list of selected applications."
+    },
+    "apps.split.remove": {
+        "message": "Remove {name}",
+        "description": "Accessible label of the button removing an application from the list. {name} is the application name."
+    },
+    "apps.split.apply": {
+        "message": "Apply",
+        "description": "Button that saves the per-app split tunnel settings and reconnects. Keep short."
+    },
+    "apps.split.reconnecting": {
+        "message": "Reconnecting…",
+        "description": "Status shown while the connection is re-established to apply the new settings."
     },
     "exitNodes.search.placeholder": {
         "message": "Search exit nodes",

@@ -41,12 +41,29 @@ func resolveSplitSettings(configDir string) (split.Settings, error) {
 
 // applySplitTunnel pushes the resolved split tunnel settings into the firewall
 // backend. It runs on engine start right after the firewall manager is created,
-// on the common path of the daemon and one-off runs. Failures are logged and
-// never abort the connection: an unsupported backend or an apply error leaves
-// the tunnel carrying all traffic.
+// on the common path of the daemon and one-off runs, and on hot setting
+// changes via ApplySplitTunnelNow. Failures are logged and never abort the
+// connection: an unsupported backend or an apply error leaves the tunnel
+// carrying all traffic.
 func (e *Engine) applySplitTunnel() {
 	cfg := e.config.SplitTunnel
-	if cfg == nil || cfg.Mode == split.ModeOff {
+	if cfg == nil {
+		return
+	}
+
+	// An off mode still reaches a live firewall: SetSplitTunnel(ModeOff)
+	// clears a previously installed engine, so a hot switch to off takes
+	// effect immediately instead of surviving until the next start.
+	if cfg.Mode == split.ModeOff {
+		if e.firewall != nil {
+			if err := e.firewall.SetSplitTunnel(*cfg); err != nil {
+				log.Warnf("split tunnel: failed to disable splitting: %v", err)
+			}
+		}
+		return
+	}
+
+	if e.firewall == nil {
 		return
 	}
 
@@ -58,6 +75,25 @@ func (e *Engine) applySplitTunnel() {
 	e.syncSplitTunnelRoutes()
 
 	log.Infof("split tunnel: mode %s, apps: %s", cfg.Mode, strings.Join(cfg.Apps, ", "))
+}
+
+// ApplySplitTunnelNow hot-applies new split tunnel settings to a running
+// engine: the settings replace the engine config and are pushed to the live
+// firewall manager, so a mode or app list change takes effect without a
+// reconnect; a switch to ModeOff clears an installed engine immediately. When
+// the engine has no firewall manager (still starting, or the firewall is
+// disabled) the settings are only stored in the config and take effect on the
+// next start.
+//
+// The call takes syncMsgMux, serializing against Management syncs (which
+// refresh the split tunnel routes under the same lock) and against engine
+// teardown in Stop, so the firewall manager cannot be torn down mid-apply.
+func (e *Engine) ApplySplitTunnelNow(s split.Settings) {
+	e.syncMsgMux.Lock()
+	defer e.syncMsgMux.Unlock()
+
+	e.config.SplitTunnel = &s
+	e.applySplitTunnel()
 }
 
 // syncSplitTunnelRoutes tells the firewall backend which prefixes NetBird

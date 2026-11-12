@@ -9,7 +9,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -30,6 +32,7 @@ import (
 	"github.com/netbirdio/netbird/client/internal/localmetrics"
 	"github.com/netbirdio/netbird/client/internal/profilemanager"
 	sleephandler "github.com/netbirdio/netbird/client/internal/sleep/handler"
+	"github.com/netbirdio/netbird/client/internal/split"
 	"github.com/netbirdio/netbird/client/mdm"
 	"github.com/netbirdio/netbird/client/system"
 	mgm "github.com/netbirdio/netbird/shared/management/client"
@@ -2520,6 +2523,83 @@ func (s *Server) GetConfig(ctx context.Context, req *proto.GetConfigRequest) (*p
 		SshJWTCacheTTL:                sshJWTCacheTTL,
 		MDMManagedFields:              cfg.Policy().ManagedKeys(),
 	}, nil
+}
+
+// GetSplitTunnel returns the persisted per-app split tunnel settings. A never
+// configured feature reads as mode off with an empty app list.
+func (s *Server) GetSplitTunnel(_ context.Context, _ *proto.GetSplitTunnelRequest) (*proto.GetSplitTunnelResponse, error) {
+	settings, err := split.LoadStore(profilemanager.DefaultConfigPathDir)
+	if err != nil {
+		log.Errorf("failed to load split tunnel settings: %v", err)
+		return nil, gstatus.Errorf(codes.Internal, "failed to load split tunnel settings: %v", err)
+	}
+
+	return &proto.GetSplitTunnelResponse{
+		Mode: settings.Mode.String(),
+		Apps: settings.Apps,
+	}, nil
+}
+
+// SetSplitTunnel validates, persists, and hot-applies the per-app split tunnel
+// settings. The request carries the full replacement app list. When an engine
+// is connected the settings are pushed to the live firewall immediately; an
+// apply failure there is only logged, the settings are already persisted and
+// take effect on the next connect, so the RPC still succeeds.
+func (s *Server) SetSplitTunnel(_ context.Context, msg *proto.SetSplitTunnelRequest) (*proto.SetSplitTunnelResponse, error) {
+	mode, err := split.ParseMode(msg.Mode)
+	if err != nil {
+		return nil, gstatus.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	settings := split.Settings{Mode: mode, Apps: normalizeSplitApps(msg.Apps)}
+
+	if err := split.SaveStore(profilemanager.DefaultConfigPathDir, settings); err != nil {
+		log.Errorf("failed to save split tunnel settings: %v", err)
+		return nil, gstatus.Errorf(codes.Internal, "failed to save split tunnel settings: %v", err)
+	}
+
+	s.mutex.Lock()
+	connectClient := s.connectClient
+	s.mutex.Unlock()
+
+	if connectClient != nil {
+		if engine := connectClient.Engine(); engine != nil {
+			engine.ApplySplitTunnelNow(settings)
+		}
+	}
+
+	return &proto.SetSplitTunnelResponse{}, nil
+}
+
+// normalizeSplitApps normalizes request app entries into the stored form:
+// lower-cased base names, trimmed, deduplicated and sorted — the same shape
+// split.LoadStore yields on read.
+func normalizeSplitApps(apps []string) []string {
+	normalized := make([]string, 0, len(apps))
+	seen := make(map[string]struct{}, len(apps))
+	for _, app := range apps {
+		app = strings.ToLower(appBaseName(strings.TrimSpace(app)))
+		if app == "" {
+			continue
+		}
+		if _, dup := seen[app]; dup {
+			continue
+		}
+		seen[app] = struct{}{}
+		normalized = append(normalized, app)
+	}
+	slices.Sort(normalized)
+	return normalized
+}
+
+// appBaseName returns the element of a path after the last separator. Both
+// '/' and '\\' are accepted, so a Windows-style path sent to a non-Windows
+// daemon is still reduced to its file name.
+func appBaseName(path string) string {
+	if i := strings.LastIndexAny(path, `/\`); i >= 0 {
+		return path[i+1:]
+	}
+	return path
 }
 
 // AddProfile adds a new profile to the daemon.

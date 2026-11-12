@@ -8,8 +8,10 @@ import { AppRightPanel } from "@/layouts/AppRightPanel.tsx";
 import { VerticalTabs } from "@/components/VerticalTabs.tsx";
 import { SettingsNavigation } from "@/modules/settings/SettingsNavigation.tsx";
 import { AutostartSettingsProvider, SettingsProvider } from "@/contexts/SettingsContext.tsx";
+import { SplitTunnelProvider } from "@/contexts/SplitTunnelContext.tsx";
 import { SettingsGeneral } from "@/modules/settings/SettingsGeneral.tsx";
 import { SettingsNetwork } from "@/modules/settings/SettingsNetwork.tsx";
+import { SettingsApps } from "@/modules/settings/SettingsApps.tsx";
 import { SettingsSecurity } from "@/modules/settings/SettingsSecurity.tsx";
 import { ProfilesTab } from "@/modules/profiles/ProfilesTab.tsx";
 import { SettingsSSH } from "@/modules/settings/SettingsSSH.tsx";
@@ -24,6 +26,7 @@ const EVENT_SETTINGS_OPEN = "netbird:settings:open";
 const enum Tab {
     General = "general",
     Network = "network",
+    Apps = "apps",
     Security = "security",
     Profiles = "profiles",
     SSH = "ssh",
@@ -46,6 +49,7 @@ const CONFIG_TABS: ReadonlySet<Tab> = new Set([
 const TAB_CONTENT: Record<Tab, ReactNode> = {
     [Tab.General]: <SettingsGeneral />,
     [Tab.Network]: <SettingsNetwork />,
+    [Tab.Apps]: <SettingsApps />,
     [Tab.Security]: <SettingsSecurity />,
     [Tab.Profiles]: <ProfilesTab />,
     [Tab.SSH]: <SettingsSSH />,
@@ -72,6 +76,7 @@ export const SettingsPage = () => {
         const visibility: Record<Tab, boolean> = {
             [Tab.General]: true,
             [Tab.Network]: editable,
+            [Tab.Apps]: editable,
             [Tab.Security]: editable,
             [Tab.Profiles]: !features.disableProfiles,
             [Tab.SSH]: mdm.allowServerSSH ?? editable,
@@ -116,37 +121,39 @@ export const SettingsPage = () => {
                     <SettingsNavigation />
                     <AppRightPanel>
                         <AutostartSettingsProvider>
-                            <WithSettings enabled={CONFIG_TABS.has(active as Tab)}>
-                                <ScrollArea.Root
-                                    dir={dir}
-                                    key={active}
-                                    type={"auto"}
-                                    className={"min-h-0 flex-1 overflow-hidden"}
-                                >
-                                    <ScrollArea.Viewport className={"h-full w-full"}>
-                                        <div className={"px-7 py-6"}>
-                                            {visibleTabs.map((tab) => (
-                                                <VerticalTabs.Content key={tab} value={tab}>
-                                                    {TAB_CONTENT[tab]}
-                                                </VerticalTabs.Content>
-                                            ))}
-                                        </div>
-                                    </ScrollArea.Viewport>
-                                    <ScrollArea.Scrollbar
-                                        orientation={"vertical"}
-                                        className={cn(
-                                            "flex touch-none transition-colors select-none",
-                                            "w-1.5 bg-transparent py-1",
-                                        )}
+                            <SplitTunnelProvider>
+                                <WithSettings enabled={CONFIG_TABS.has(active as Tab)}>
+                                    <ScrollArea.Root
+                                        dir={dir}
+                                        key={active}
+                                        type={"auto"}
+                                        className={"min-h-0 flex-1 overflow-hidden"}
                                     >
-                                        <ScrollArea.Thumb
-                                            className={
-                                                "relative flex-1 rounded-full bg-nb-gray-800 hover:bg-nb-gray-700"
-                                            }
-                                        />
-                                    </ScrollArea.Scrollbar>
-                                </ScrollArea.Root>
-                            </WithSettings>
+                                        <ScrollArea.Viewport className={"h-full w-full"}>
+                                            <div className={"px-7 py-6"}>
+                                                {visibleTabs.map((tab) => (
+                                                    <VerticalTabs.Content key={tab} value={tab}>
+                                                        {TAB_CONTENT[tab]}
+                                                    </VerticalTabs.Content>
+                                                ))}
+                                            </div>
+                                        </ScrollArea.Viewport>
+                                        <ScrollArea.Scrollbar
+                                            orientation={"vertical"}
+                                            className={cn(
+                                                "flex touch-none transition-colors select-none",
+                                                "w-1.5 bg-transparent py-1",
+                                            )}
+                                        >
+                                            <ScrollArea.Thumb
+                                                className={
+                                                    "relative flex-1 rounded-full bg-nb-gray-800 hover:bg-nb-gray-700"
+                                                }
+                                            />
+                                        </ScrollArea.Scrollbar>
+                                    </ScrollArea.Root>
+                                </WithSettings>
+                            </SplitTunnelProvider>
                         </AutostartSettingsProvider>
                     </AppRightPanel>
                 </VerticalTabs>

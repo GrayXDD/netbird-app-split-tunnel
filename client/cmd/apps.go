@@ -7,18 +7,16 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc/status"
 
-	"github.com/netbirdio/netbird/client/internal/profilemanager"
 	"github.com/netbirdio/netbird/client/internal/split"
+	"github.com/netbirdio/netbird/client/proto"
 )
 
-// applyHint tells the user when an apps change takes effect: the daemon reads
-// split.json on connect only, there is no hot reload.
-const applyHint = "Применится при следующем подключении (netbird down && netbird up или перезапуск сервиса)"
-
-// appsConfigDir overrides the config directory the apps commands read and
-// write. Empty means the default engine state dir; tests set it to a temp dir.
-var appsConfigDir string
+// applyHint tells the user when an apps change takes effect: a connected
+// daemon applies it to the live firewall immediately, a disconnected one picks
+// it up on the next connect.
+const applyHint = "If the service is not connected, the change applies on the next connection."
 
 var appsCmd = &cobra.Command{
 	Use:   "apps",
@@ -58,19 +56,49 @@ var appsModeCmd = &cobra.Command{
 	RunE:    appsMode,
 }
 
-// appsDir returns the directory holding split.json: the same state dir the
-// split tunnel engine uses (NB_STATE_DIR if set, otherwise the profilemanager
-// default). root.go's legacy config resolution is intentionally not reused,
-// so the behavior of the other commands stays untouched.
-func appsDir() string {
-	if appsConfigDir != "" {
-		return appsConfigDir
+// appsClient dials the daemon and returns its service client with a closer.
+// A dial failure is reported the same way every other daemon command does,
+// including the "start the service" hint.
+func appsClient(cmd *cobra.Command) (proto.DaemonServiceClient, func(), error) {
+	conn, err := getClient(cmd)
+	if err != nil {
+		return nil, nil, err
 	}
-	return profilemanager.DefaultConfigPathDir
+	return proto.NewDaemonServiceClient(conn), func() { _ = conn.Close() }, nil
+}
+
+// fetchAppsSettings loads the current settings from the daemon.
+func fetchAppsSettings(cmd *cobra.Command, client proto.DaemonServiceClient) (split.Settings, error) {
+	resp, err := client.GetSplitTunnel(cmd.Context(), &proto.GetSplitTunnelRequest{})
+	if err != nil {
+		return split.Settings{}, fmt.Errorf("failed to get split tunnel settings: %v", status.Convert(err).Message())
+	}
+
+	mode, err := split.ParseMode(resp.Mode)
+	if err != nil {
+		return split.Settings{}, fmt.Errorf("daemon returned an unknown split mode %q", resp.Mode)
+	}
+	return split.Settings{Mode: mode, Apps: resp.Apps}, nil
+}
+
+// saveAppsSettings replaces the settings on the daemon with the full list and
+// prints the resulting state plus the apply hint.
+func saveAppsSettings(cmd *cobra.Command, client proto.DaemonServiceClient, s split.Settings) error {
+	req := &proto.SetSplitTunnelRequest{
+		Mode: s.Mode.String(),
+		Apps: s.Apps,
+	}
+	if _, err := client.SetSplitTunnel(cmd.Context(), req); err != nil {
+		return fmt.Errorf("failed to set split tunnel settings: %v", status.Convert(err).Message())
+	}
+
+	printAppsSettings(cmd, s)
+	cmd.Println(applyHint)
+	return nil
 }
 
 // normalizeAppArg turns a user-supplied path into the stored form: the base
-// name, trimmed and lower-cased (e.g. `C:\\Tools\\Opera.EXE` -> `opera.exe`).
+// name, trimmed and lower-cased (e.g. `C:\Tools\Opera.EXE` -> `opera.exe`).
 func normalizeAppArg(app string) string {
 	return strings.ToLower(filepath.Base(strings.TrimSpace(app)))
 }
@@ -112,46 +140,53 @@ func printAppsSettings(cmd *cobra.Command, s split.Settings) {
 	cmd.Printf("Applications: %s\n", strings.Join(s.Apps, ", "))
 }
 
-// saveAppsStore persists the settings and prints the resulting state plus the
-// apply hint, as every mutation takes effect on the next connection only.
-func saveAppsStore(cmd *cobra.Command, s split.Settings) error {
-	if err := split.SaveStore(appsDir(), s); err != nil {
-		return fmt.Errorf("save split tunnel settings: %w", err)
-	}
-	printAppsSettings(cmd, s)
-	cmd.Println(applyHint)
-	return nil
-}
-
 func appsList(cmd *cobra.Command, _ []string) error {
-	s, err := split.LoadStore(appsDir())
+	client, closeConn, err := appsClient(cmd)
 	if err != nil {
-		return fmt.Errorf("load split tunnel settings: %w", err)
+		return err
+	}
+	defer closeConn()
+
+	s, err := fetchAppsSettings(cmd, client)
+	if err != nil {
+		return err
 	}
 	printAppsSettings(cmd, s)
 	return nil
 }
 
 func appsAdd(cmd *cobra.Command, args []string) error {
-	s, err := split.LoadStore(appsDir())
+	client, closeConn, err := appsClient(cmd)
 	if err != nil {
-		return fmt.Errorf("load split tunnel settings: %w", err)
+		return err
+	}
+	defer closeConn()
+
+	s, err := fetchAppsSettings(cmd, client)
+	if err != nil {
+		return err
 	}
 	s.Apps = mergeApps(s.Apps, args)
-	return saveAppsStore(cmd, s)
+	return saveAppsSettings(cmd, client, s)
 }
 
 func appsRemove(cmd *cobra.Command, args []string) error {
-	s, err := split.LoadStore(appsDir())
+	client, closeConn, err := appsClient(cmd)
 	if err != nil {
-		return fmt.Errorf("load split tunnel settings: %w", err)
+		return err
+	}
+	defer closeConn()
+
+	s, err := fetchAppsSettings(cmd, client)
+	if err != nil {
+		return err
 	}
 	removed := make([]string, 0, len(args))
 	for _, arg := range args {
 		removed = append(removed, normalizeAppArg(arg))
 	}
 	s.Apps = dropApps(s.Apps, removed)
-	return saveAppsStore(cmd, s)
+	return saveAppsSettings(cmd, client, s)
 }
 
 func appsMode(cmd *cobra.Command, args []string) error {
@@ -159,10 +194,17 @@ func appsMode(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	s, err := split.LoadStore(appsDir())
+
+	client, closeConn, err := appsClient(cmd)
 	if err != nil {
-		return fmt.Errorf("load split tunnel settings: %w", err)
+		return err
+	}
+	defer closeConn()
+
+	s, err := fetchAppsSettings(cmd, client)
+	if err != nil {
+		return err
 	}
 	s.Mode = mode
-	return saveAppsStore(cmd, s)
+	return saveAppsSettings(cmd, client, s)
 }

@@ -97,6 +97,14 @@ service DaemonService {
 
   rpc SetConfig(SetConfigRequest) returns (SetConfigResponse) {}
 
+  // GetSplitTunnel returns the per-app split tunnel settings (mode and app list).
+  rpc GetSplitTunnel(GetSplitTunnelRequest) returns (GetSplitTunnelResponse) {}
+
+  // SetSplitTunnel stores the per-app split tunnel settings. The daemon applies
+  // them to a running engine when one is connected; otherwise they take effect
+  // on the next connection.
+  rpc SetSplitTunnel(SetSplitTunnelRequest) returns (SetSplitTunnelResponse) {}
+
   rpc AddProfile(AddProfileRequest) returns (AddProfileResponse) {}
 
   rpc RenameProfile(RenameProfileRequest) returns (RenameProfileResponse) {}
@@ -795,6 +803,25 @@ message SetConfigRequest {
 }
 
 message SetConfigResponse{}
+
+message GetSplitTunnelRequest {}
+
+message GetSplitTunnelResponse {
+  // off | include | exclude
+  string mode = 1;
+  // executable base names, lowercase
+  repeated string apps = 2;
+}
+
+message SetSplitTunnelRequest {
+  // off | include | exclude
+  string mode = 1;
+  // full replacement list of executable base names; the daemon normalizes
+  // (lowercase base names) and deduplicates
+  repeated string apps = 2;
+}
+
+message SetSplitTunnelResponse{}
 
 message AddProfileRequest {
   string username = 1;

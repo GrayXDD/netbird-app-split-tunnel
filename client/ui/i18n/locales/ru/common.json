@@ -506,6 +506,9 @@
     "settings.tabs.network": {
         "message": "Сеть"
     },
+    "settings.tabs.apps": {
+        "message": "Приложения"
+    },
     "settings.tabs.security": {
         "message": "Безопасность"
     },
@@ -1294,6 +1297,45 @@
     },
     "networks.bulk.disableAll": {
         "message": "Отключить все"
+    },
+    "apps.split.title": {
+        "message": "Туннелируемые приложения"
+    },
+    "apps.split.description": {
+        "message": "Выберите, какие приложения ходят через NetBird, а какие — напрямую"
+    },
+    "apps.split.mode.label": {
+        "message": "Режим"
+    },
+    "apps.split.mode.off": {
+        "message": "Выключено (обычный NetBird)"
+    },
+    "apps.split.mode.include": {
+        "message": "Через NetBird: только выбранные"
+    },
+    "apps.split.mode.exclude": {
+        "message": "Через NetBird: всё, кроме выбранных"
+    },
+    "apps.split.add.label": {
+        "message": "Добавить приложение"
+    },
+    "apps.split.add.placeholder": {
+        "message": "Найдите запущенное приложение или введите имя exe-файла…"
+    },
+    "apps.split.empty": {
+        "message": "Пока ничего не выбрано"
+    },
+    "apps.split.selected": {
+        "message": "Выбранные приложения"
+    },
+    "apps.split.remove": {
+        "message": "Удалить {name}"
+    },
+    "apps.split.apply": {
+        "message": "Применить"
+    },
+    "apps.split.reconnecting": {
+        "message": "Переподключение…"
     },
     "exitNodes.search.placeholder": {
         "message": "Поиск выходных узлов"
