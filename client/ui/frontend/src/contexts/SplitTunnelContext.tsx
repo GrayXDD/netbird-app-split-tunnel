@@ -26,7 +26,8 @@ type SplitTunnelContextValue = {
     settings: LocalSettings | null;
     runningApps: RunningApp[];
     error: string | null;
-    addApp: (exe: string) => void;
+    // true when the app was added, false for a duplicate (or empty name).
+    addApp: (exe: string) => boolean;
     removeApp: (exe: string) => void;
     setMode: (mode: SplitTunnelMode) => void;
     hasChanges: boolean;
@@ -90,14 +91,19 @@ export const SplitTunnelProvider = ({ children }: { children: ReactNode }) => {
     }, [load]);
 
     // addApp/removeApp/setMode edit the local copy only; save() persists it.
-    const addApp = useCallback((exe: string) => {
-        const id = normalizeAppId(exe);
-        if (!id) return;
-        setSettings((prev) => {
-            if (!prev || prev.apps.includes(id)) return prev;
-            return { ...prev, apps: [...prev.apps, id].sort() };
-        });
-    }, []);
+    const addApp = useCallback(
+        (exe: string): boolean => {
+            const id = normalizeAppId(exe);
+            if (!id || !settings || settings.apps.includes(id)) return false;
+            setSettings((prev) =>
+                prev && !prev.apps.includes(id)
+                    ? { ...prev, apps: [...prev.apps, id].sort() }
+                    : prev,
+            );
+            return true;
+        },
+        [settings],
+    );
 
     const removeApp = useCallback((exe: string) => {
         setSettings((prev) =>

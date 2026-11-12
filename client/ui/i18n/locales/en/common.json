@@ -1763,6 +1763,14 @@
         "message": "Search running apps or type an executable name…",
         "description": "Placeholder in the add-application search field."
     },
+    "apps.split.add.pickFile": {
+        "message": "Choose a file…",
+        "description": "Tooltip of the button that opens the native file dialog to pick an executable."
+    },
+    "apps.split.add.duplicate": {
+        "message": "Already added",
+        "description": "Inline warning shown when the added application is already in the list."
+    },
     "apps.split.empty": {
         "message": "Nothing selected yet",
         "description": "Empty state shown when no applications are selected."

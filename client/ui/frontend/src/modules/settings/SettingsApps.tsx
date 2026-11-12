@@ -1,6 +1,6 @@
-import { type KeyboardEvent, useMemo, useRef, useState } from "react";
+import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AppWindowIcon, XIcon } from "lucide-react";
+import { AppWindowIcon, PlusIcon, XIcon } from "lucide-react";
 import { Button } from "@/components/buttons/Button";
 import { IconButton } from "@/components/buttons/IconButton";
 import { EmptyState } from "@/components/empty-state/EmptyState";
@@ -12,8 +12,14 @@ import { Label } from "@/components/typography/Label";
 import { SectionGroup } from "@/modules/settings/SettingsSection.tsx";
 import { SettingsSkeleton } from "@/modules/settings/SettingsSkeleton.tsx";
 import { useSplitTunnel, type SplitTunnelMode } from "@/contexts/SplitTunnelContext";
+import { SplitTunnel as SplitTunnelSvc } from "@bindings/services";
 
 const MAX_MATCHES = 10;
+const DUPLICATE_WARNING_MS = 2000;
+
+// basename of a native path, tolerating both separators (the dialog returns
+// platform paths; the web view may run on another OS).
+const basename = (path: string): string => path.split(/[\\/]+/).pop() ?? path;
 
 export function SettingsApps() {
     const { t } = useTranslation();
@@ -31,7 +37,22 @@ export function SettingsApps() {
     } = useSplitTunnel();
 
     const [query, setQuery] = useState("");
+    const [duplicate, setDuplicate] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
+    const duplicateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    useEffect(
+        () => () => {
+            if (duplicateTimer.current) clearTimeout(duplicateTimer.current);
+        },
+        [],
+    );
+
+    const showDuplicate = () => {
+        setDuplicate(true);
+        if (duplicateTimer.current) clearTimeout(duplicateTimer.current);
+        duplicateTimer.current = setTimeout(() => setDuplicate(false), DUPLICATE_WARNING_MS);
+    };
 
     const modeOptions = useMemo<SelectOption<SplitTunnelMode>[]>(
         () => [
@@ -49,34 +70,58 @@ export function SettingsApps() {
 
     const added = useMemo(() => new Set(settings?.apps ?? []), [settings]);
 
+    const normalizedQuery = useMemo(() => query.trim().toLowerCase(), [query]);
+
     // Live matches from the running apps, filtered by the typed text; apps
     // already in the list stay out of the dropdown.
     const matches = useMemo(() => {
-        const q = query.trim().toLowerCase();
-        if (!q) return [];
+        if (!normalizedQuery) return [];
         return runningApps
             .filter(
                 (app) =>
                     !added.has(app.exe) &&
-                    (app.name.toLowerCase().includes(q) ||
-                        app.exe.toLowerCase().includes(q) ||
-                        app.path.toLowerCase().includes(q)),
+                    (app.name.toLowerCase().includes(normalizedQuery) ||
+                        app.exe.toLowerCase().includes(normalizedQuery) ||
+                        app.path.toLowerCase().includes(normalizedQuery)),
             )
             .slice(0, MAX_MATCHES);
-    }, [query, runningApps, added]);
+    }, [normalizedQuery, runningApps, added]);
 
-    const commit = (exe: string) => {
-        addApp(exe);
+    // The query also filters the selected list.
+    const visibleApps = useMemo(() => {
+        const apps = settings?.apps ?? [];
+        if (!normalizedQuery) return apps;
+        return apps.filter((exe) => exe.includes(normalizedQuery));
+    }, [settings, normalizedQuery]);
+
+    // Returns false (and shows the inline warning) when the app is already
+    // in the list; the typed text itself never becomes an app.
+    const commit = (exe: string): boolean => {
+        if (!addApp(exe)) {
+            showDuplicate();
+            return false;
+        }
         setQuery("");
         inputRef.current?.focus();
+        return true;
     };
 
-    // Enter picks the first match; with nothing matching, the typed text
-    // itself becomes the app id (the daemon normalizes it).
+    // Enter picks the first dropdown match; with nothing matching, Enter adds
+    // nothing: an app enters the list only via the dropdown or the file dialog.
     const onSearchKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
         if (e.key !== "Enter") return;
         e.preventDefault();
-        commit(matches.length > 0 ? matches[0].exe : query);
+        if (matches.length > 0) commit(matches[0].exe);
+    };
+
+    const onPickFile = async () => {
+        try {
+            const path = await SplitTunnelSvc.PickAppExe();
+            // Empty path means the dialog was cancelled.
+            if (path) commit(basename(path));
+        } catch (e) {
+            console.error("[SettingsApps] pick executable failed", e);
+        }
     };
 
     return (
@@ -102,19 +147,33 @@ export function SettingsApps() {
 
                     <div className={"relative"}>
                         <Label as={"div"}>{t("apps.split.add.label")}</Label>
-                        <div
-                            className={
-                                "flex items-center rounded-md border border-nb-gray-850 bg-nb-gray-920 focus-within:border-nb-gray-700"
-                            }
-                        >
-                            <SearchInput
-                                ref={inputRef}
-                                placeholder={t("apps.split.add.placeholder")}
-                                value={query}
-                                onChange={(e) => setQuery(e.target.value)}
-                                onKeyDown={onSearchKeyDown}
+                        <div className={"flex items-center gap-2"}>
+                            <div
+                                className={
+                                    "flex min-w-0 flex-1 items-center rounded-md border border-nb-gray-850 bg-nb-gray-920 focus-within:border-nb-gray-700"
+                                }
+                            >
+                                <SearchInput
+                                    ref={inputRef}
+                                    placeholder={t("apps.split.add.placeholder")}
+                                    value={query}
+                                    onChange={(e) => setQuery(e.target.value)}
+                                    onKeyDown={onSearchKeyDown}
+                                />
+                            </div>
+                            <IconButton
+                                icon={PlusIcon}
+                                aria-label={t("apps.split.add.pickFile")}
+                                title={t("apps.split.add.pickFile")}
+                                onClick={() => onPickFile()}
+                                className={"h-10 w-10 shrink-0"}
                             />
                         </div>
+                        {duplicate && (
+                            <p role={"status"} className={"mt-1 text-xs font-medium text-red-500"}>
+                                {t("apps.split.add.duplicate")}
+                            </p>
+                        )}
                         {matches.length > 0 && (
                             <div
                                 role={"listbox"}
@@ -166,7 +225,7 @@ export function SettingsApps() {
                             />
                         ) : (
                             <ul className={"flex flex-col gap-1"}>
-                                {settings.apps.map((exe) => (
+                                {visibleApps.map((exe) => (
                                     <AppRow
                                         key={exe}
                                         exe={exe}

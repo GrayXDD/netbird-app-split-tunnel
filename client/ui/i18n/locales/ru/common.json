@@ -1322,6 +1322,12 @@
     "apps.split.add.placeholder": {
         "message": "Найдите запущенное приложение или введите имя exe-файла…"
     },
+    "apps.split.add.pickFile": {
+        "message": "Выбрать файл…"
+    },
+    "apps.split.add.duplicate": {
+        "message": "Уже добавлено"
+    },
     "apps.split.empty": {
         "message": "Пока ничего не выбрано"
     },

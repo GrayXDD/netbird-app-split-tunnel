@@ -15,6 +15,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/netbirdio/netbird/client/proto"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 // SplitTunnelSettings is the daemon's per-app split tunnel configuration.
@@ -144,6 +145,41 @@ func (s *SplitTunnel) RunningApps(ctx context.Context) ([]RunningApp, error) {
 		return cmp.Compare(a.Name, b.Name)
 	})
 	return apps, nil
+}
+
+// PickAppExe opens the native file dialog to pick an executable file. It
+// returns the full path of the chosen file, or an empty string when the
+// dialog is dismissed without a selection (no error). The dialog is modal
+// and blocks until the user picks or cancels.
+func (s *SplitTunnel) PickAppExe(ctx context.Context) (string, error) {
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
+	app := application.Get()
+	if app == nil || app.Dialog == nil {
+		return "", fmt.Errorf("application is not running")
+	}
+
+	dialog := app.Dialog.OpenFile()
+	dialog.SetTitle("Open executable file")
+	dialog.AddFilter("Executable files (*.exe)", "*.exe")
+	dialog.AddFilter("All files (*.*)", "*.*")
+
+	path, err := dialog.PromptForSingleSelection()
+	if err != nil {
+		// Wails reports the OS cancellation as an error on Windows (the
+		// sentinel lives in an internal package, so match by text) and as an
+		// empty selection elsewhere.
+		if isDialogCancelled(err) {
+			return "", nil
+		}
+		return "", err
+	}
+	return path, nil
+}
+
+func isDialogCancelled(err error) bool {
+	return strings.Contains(strings.ToLower(err.Error()), "cancel")
 }
 
 func isValidSplitTunnelMode(mode string) bool {
