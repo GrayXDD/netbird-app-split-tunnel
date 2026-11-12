@@ -8,6 +8,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/netbirdio/netbird/client/internal/split"
 	"github.com/netbirdio/netbird/client/internal/statemanager"
 )
 
@@ -186,6 +187,16 @@ type Manager interface {
 
 	// RemoveOutputDNAT removes an OUTPUT chain DNAT rule.
 	RemoveOutputDNAT(localAddr netip.Addr, protocol Protocol, originalPort, translatedPort uint16) error
+
+	// SetSplitTunnel installs or removes the per-app split tunnel engine.
+	SetSplitTunnel(s split.Settings) error
+
+	// SetSplitTunnelRoutes records the prefixes NetBird routes through the
+	// tunnel (network routes behind routing peers, without catch-all exit
+	// node routes). Backends implementing SetSplitTunnel must keep traffic to
+	// these prefixes on the tunnel. Informational: callers push updates
+	// whenever the routed networks change.
+	SetSplitTunnelRoutes(prefixes []netip.Prefix) error
 }
 
 // GenKey builds the rule id for this pair from the given format.

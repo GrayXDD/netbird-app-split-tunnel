@@ -56,6 +56,7 @@ import (
 	"github.com/netbirdio/netbird/client/internal/relay"
 	"github.com/netbirdio/netbird/client/internal/rosenpass"
 	"github.com/netbirdio/netbird/client/internal/routemanager"
+	"github.com/netbirdio/netbird/client/internal/split"
 	"github.com/netbirdio/netbird/client/internal/statemanager"
 	"github.com/netbirdio/netbird/client/internal/stdnet"
 	"github.com/netbirdio/netbird/client/internal/syncstore"
@@ -167,6 +168,11 @@ type EngineConfig struct {
 	// LazyConnection is the MDM-sourced lazy-connection override; StateUnset defers to
 	// the env var and management feature flag.
 	LazyConnection lazyconn.State
+
+	// SplitTunnel holds the resolved per-app split tunnel settings. A nil
+	// pointer or an off mode leaves the tunnel carrying all traffic; anything
+	// else is applied to the firewall on start when the backend supports it.
+	SplitTunnel *split.Settings
 
 	MTU uint16
 
@@ -773,6 +779,8 @@ func (e *Engine) createFirewall() error {
 	if e.firewall == nil {
 		return fmt.Errorf("create firewall manager: received nil manager")
 	}
+
+	e.applySplitTunnel()
 
 	if err := e.initFirewall(); err != nil {
 		return err
@@ -1672,6 +1680,9 @@ func (e *Engine) updateNetworkMap(networkMap *mgmProto.NetworkMap) error {
 	if err := e.routeManager.UpdateRoutes(serial, serverRoutes, clientRoutes, dnsRouteFeatureFlag); err != nil {
 		log.Errorf("failed to update routes: %v", err)
 	}
+	// The split tunnel guard must follow route updates: newly routed
+	// networks have to stay on the tunnel.
+	e.syncSplitTunnelRoutes()
 	done()
 
 	done = e.phase("filtering")

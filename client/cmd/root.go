@@ -196,6 +196,10 @@ func init() {
 	networksCMD.AddCommand(routesListCmd)
 	networksCMD.AddCommand(routesSelectCmd, routesDeselectCmd)
 
+	// per-app split tunnel settings
+	rootCmd.AddCommand(appsCmd)
+	appsCmd.AddCommand(appsListCmd, appsAddCmd, appsRemoveCmd, appsModeCmd)
+
 	debugCmd.AddCommand(debugBundleCmd)
 	debugCmd.AddCommand(logCmd)
 	logCmd.AddCommand(logLevelCmd)

@@ -13,6 +13,7 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 
 	"github.com/netbirdio/netbird/client/errors"
+	"github.com/netbirdio/netbird/client/firewall/uspfilter/bypass"
 	"github.com/netbirdio/netbird/client/iface/configurer"
 	"github.com/netbirdio/netbird/client/iface/device"
 	nbnetstack "github.com/netbirdio/netbird/client/iface/netstack"
@@ -274,6 +275,27 @@ func (w *WGIface) GetDevice() *device.FilteredDevice {
 // GetWGDevice returns the WireGuard device
 func (w *WGIface) GetWGDevice() *wgbackend.Device {
 	return w.tun.Device()
+}
+
+// Tun returns the write side of the raw TUN device backing the interface, or
+// nil when the interface has no filtered device. It is the sink for packets
+// handed back to the host, e.g. the answers of the split tunnel bypass stack.
+// The raw device is returned on purpose: bypass answers are locally generated
+// and carry no inbound conntrack or ACL state, so writing them through the
+// FilteredDevice would run FilterInbound and drop them (the DNS TCP stack
+// writes to the raw device for the same reason, see dns/service_memory.go).
+func (w *WGIface) Tun() bypass.TUNWriter {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	if w.tun == nil {
+		return nil
+	}
+	fd := w.tun.FilteredDevice()
+	if fd == nil || fd.TUN == nil {
+		return nil
+	}
+	return fd.TUN
 }
 
 // GetStats returns the last handshake time, rx and tx bytes

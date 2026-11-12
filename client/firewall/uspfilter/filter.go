@@ -23,6 +23,7 @@ import (
 	nberrors "github.com/netbirdio/netbird/client/errors"
 	"github.com/netbirdio/netbird/client/firewall/firewalld"
 	firewall "github.com/netbirdio/netbird/client/firewall/manager"
+	"github.com/netbirdio/netbird/client/firewall/uspfilter/bypass"
 	"github.com/netbirdio/netbird/client/firewall/uspfilter/common"
 	"github.com/netbirdio/netbird/client/firewall/uspfilter/conntrack"
 	"github.com/netbirdio/netbird/client/firewall/uspfilter/forwarder"
@@ -33,6 +34,7 @@ import (
 	"github.com/netbirdio/netbird/client/iface/wgbackend"
 	nbid "github.com/netbirdio/netbird/client/internal/acl/id"
 	nftypes "github.com/netbirdio/netbird/client/internal/netflow/types"
+	"github.com/netbirdio/netbird/client/internal/split"
 	"github.com/netbirdio/netbird/client/internal/statemanager"
 )
 
@@ -122,6 +124,10 @@ type Iface interface {
 	Address() wgaddr.Address
 	SetFilter(device.PacketFilter) error
 	GetWGDevice() *wgbackend.Device
+	// Tun returns the sink the host receives answer packets on, e.g. the
+	// responses the split tunnel bypass stack produces. Nil when the
+	// interface has no filtered device.
+	Tun() bypass.TUNWriter
 }
 
 // InterfaceAllower opens the NetBird interface in the host firewall so it
@@ -214,6 +220,22 @@ type Manager struct {
 	// Only one hook per protocol is supported. Outbound direction only.
 	udpHookOut atomic.Pointer[common.PacketHook]
 	tcpHookOut atomic.Pointer[common.PacketHook]
+
+	// splitEngine decides per connection whether traffic tunnels or bypasses;
+	// nil when the split tunnel is off, making filterOutbound unchanged.
+	splitEngine atomic.Pointer[split.Engine]
+	// splitRoutes holds the NetBird-routed prefixes (network routes behind
+	// routing peers) that the split bypass must never capture; set via
+	// SetSplitTunnelRoutes, sorted by address.
+	splitRoutes atomic.Pointer[[]netip.Prefix]
+	// bypassStack terminates bypassed traffic outside the tunnel; created
+	// lazily on the first bypass verdict, guarded by bypassMu on the cold
+	// path only.
+	bypassStack atomic.Pointer[bypass.Stack]
+	bypassMu    sync.Mutex
+	// newBypassDialerFn builds the dialer for the bypass stack; a field so
+	// tests can substitute an in-memory dialer.
+	newBypassDialerFn func() bypass.DialContextFunc
 }
 
 // decoder for packages
@@ -351,6 +373,7 @@ func Create(cfg Config) (_ *Manager, err error) {
 		portDNATRules:       []portDNATRule{},
 		netstackServices:    make(map[serviceKey]struct{}),
 		mtu:                 cfg.MTU,
+		newBypassDialerFn:   newBypassDialer,
 	}
 	m.routingEnabled.Store(false)
 
@@ -870,6 +893,8 @@ func (m *Manager) resetState() {
 		fwder.Stop()
 	}
 
+	m.stopBypassStack()
+
 	if m.logger != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
@@ -957,8 +982,14 @@ func (m *Manager) filterOutbound(packetData []byte, size int) bool {
 		if m.udpHooksDrop(uint16(d.udp.DstPort), dstIP, packetData) {
 			return true
 		}
+		if m.splitBypassOut(srcIP, dstIP, uint16(d.udp.SrcPort), uint16(d.udp.DstPort), split.ProtoUDP, packetData) {
+			return true
+		}
 	case layers.LayerTypeTCP:
 		if m.tcpHooksDrop(uint16(d.tcp.DstPort), dstIP, packetData) {
+			return true
+		}
+		if m.splitBypassOut(srcIP, dstIP, uint16(d.tcp.SrcPort), uint16(d.tcp.DstPort), split.ProtoTCP, packetData) {
 			return true
 		}
 		// Clamp MSS on all TCP SYN packets, including those from local IPs.

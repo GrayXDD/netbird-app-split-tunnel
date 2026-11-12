@@ -9,6 +9,7 @@ import (
 
 	gomock "go.uber.org/mock/gomock"
 
+	"github.com/netbirdio/netbird/client/firewall/uspfilter/bypass"
 	"github.com/netbirdio/netbird/client/iface/device"
 	"github.com/netbirdio/netbird/client/iface/wgaddr"
 	"github.com/netbirdio/netbird/client/iface/wgbackend"
@@ -119,4 +120,18 @@ func (m *MockIFaceMapper) GetWGDevice() *wgbackend.Device {
 func (mr *MockIFaceMapperMockRecorder) GetWGDevice() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWGDevice", reflect.TypeOf((*MockIFaceMapper)(nil).GetWGDevice))
+}
+
+// Tun mocks base method.
+func (m *MockIFaceMapper) Tun() bypass.TUNWriter {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Tun")
+	ret0, _ := ret[0].(bypass.TUNWriter)
+	return ret0
+}
+
+// Tun indicates an expected call of Tun.
+func (mr *MockIFaceMapperMockRecorder) Tun() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Tun", reflect.TypeOf((*MockIFaceMapper)(nil).Tun))
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 
+	"github.com/netbirdio/netbird/client/firewall/uspfilter/bypass"
 	"github.com/netbirdio/netbird/client/iface/wgbackend"
 	"github.com/netbirdio/netbird/client/internal/stdnet"
 
@@ -176,6 +177,10 @@ func (m *MockWGIface) MTU() uint16 {
 }
 
 func (m *MockWGIface) SetPresharedKey(peerKey string, psk wgtypes.Key, updateOnly bool) error {
+	return nil
+}
+
+func (m *MockWGIface) Tun() bypass.TUNWriter {
 	return nil
 }
 

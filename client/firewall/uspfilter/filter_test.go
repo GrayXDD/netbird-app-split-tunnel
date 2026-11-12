@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	fw "github.com/netbirdio/netbird/client/firewall/manager"
+	"github.com/netbirdio/netbird/client/firewall/uspfilter/bypass"
 	"github.com/netbirdio/netbird/client/firewall/uspfilter/conntrack"
 	"github.com/netbirdio/netbird/client/firewall/uspfilter/log"
 	nbiface "github.com/netbirdio/netbird/client/iface"
@@ -36,6 +37,7 @@ type IFaceMock struct {
 	AddressFunc     func() wgaddr.Address
 	GetWGDeviceFunc func() *wgbackend.Device
 	GetDeviceFunc   func() *device.FilteredDevice
+	TunFunc         func() bypass.TUNWriter
 }
 
 func (i *IFaceMock) Name() string {
@@ -71,6 +73,13 @@ func (i *IFaceMock) Address() wgaddr.Address {
 		return wgaddr.Address{}
 	}
 	return i.AddressFunc()
+}
+
+func (i *IFaceMock) Tun() bypass.TUNWriter {
+	if i.TunFunc == nil {
+		return nil
+	}
+	return i.TunFunc()
 }
 
 func TestManagerCreate(t *testing.T) {

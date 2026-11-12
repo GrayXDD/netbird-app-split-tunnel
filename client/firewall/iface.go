@@ -1,6 +1,7 @@
 package firewall
 
 import (
+	"github.com/netbirdio/netbird/client/firewall/uspfilter/bypass"
 	"github.com/netbirdio/netbird/client/iface/device"
 	"github.com/netbirdio/netbird/client/iface/wgaddr"
 	"github.com/netbirdio/netbird/client/iface/wgbackend"
@@ -20,4 +21,8 @@ type IFaceMapper interface {
 	SetFilter(device.PacketFilter) error
 	GetDevice() *device.FilteredDevice
 	GetWGDevice() *wgbackend.Device
+	// Tun returns the sink the host receives answer packets on, e.g. the
+	// responses the split tunnel bypass stack produces. Nil when the
+	// interface has no filtered device.
+	Tun() bypass.TUNWriter
 }

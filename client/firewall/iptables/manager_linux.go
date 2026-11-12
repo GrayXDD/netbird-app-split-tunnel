@@ -14,6 +14,7 @@ import (
 	"github.com/netbirdio/netbird/client/firewall/firewalld"
 	firewall "github.com/netbirdio/netbird/client/firewall/manager"
 	"github.com/netbirdio/netbird/client/iface/wgaddr"
+	"github.com/netbirdio/netbird/client/internal/split"
 	"github.com/netbirdio/netbird/client/internal/statemanager"
 )
 
@@ -63,6 +64,20 @@ func Create(wgIface iFaceMapper, mtu uint16) (*Manager, error) {
 	}
 
 	return m, nil
+}
+
+// SetSplitTunnel is a stub: the iptables backend has no per-app split tunnel
+// implementation yet. It returns an error so the engine logs a warning and
+// keeps all traffic on the tunnel instead of reporting a split that never
+// happens.
+func (m *Manager) SetSplitTunnel(settings split.Settings) error {
+	return fmt.Errorf("split tunnel: not implemented on the iptables backend")
+}
+
+// SetSplitTunnelRoutes is a stub: there is no split tunnel on this backend,
+// so there is nothing to guard with routed prefixes.
+func (m *Manager) SetSplitTunnelRoutes([]netip.Prefix) error {
+	return nil
 }
 
 func (m *Manager) createIPv6Components(wgIface iFaceMapper, mtu uint16) error {

@@ -7,6 +7,7 @@ import (
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 
+	"github.com/netbirdio/netbird/client/firewall/uspfilter/bypass"
 	"github.com/netbirdio/netbird/client/iface/configurer"
 	"github.com/netbirdio/netbird/client/iface/device"
 	"github.com/netbirdio/netbird/client/iface/udpmux"
@@ -43,4 +44,8 @@ type wgIfaceBase interface {
 	LastActivities() map[string]monotime.Time
 	SetPresharedKey(peerKey string, psk wgtypes.Key, updateOnly bool) error
 	MTU() uint16
+	// Tun returns the sink the host receives answer packets on, e.g. the
+	// responses the split tunnel bypass stack produces. Nil when the
+	// interface has no filtered device.
+	Tun() bypass.TUNWriter
 }

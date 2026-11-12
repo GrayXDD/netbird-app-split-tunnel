@@ -677,6 +677,11 @@ func createEngineConfig(key wgtypes.Key, config *profilemanager.Config, peerConf
 		}
 	}
 
+	splitSettings, err := resolveSplitSettings(profilemanager.DefaultConfigPathDir)
+	if err != nil {
+		return nil, fmt.Errorf("resolve split tunnel settings: %w", err)
+	}
+
 	engineConf := &EngineConfig{
 		WgIfaceName:                   config.WgIface,
 		WgAddr:                        wgAddr,
@@ -709,6 +714,8 @@ func createEngineConfig(key wgtypes.Key, config *profilemanager.Config, peerConf
 		SyncMessageVersion:  config.SyncMessageVersion,
 
 		LazyConnection: lazyconn.ParseState(config.LazyConnection),
+
+		SplitTunnel: &splitSettings,
 
 		CertStore: certStoreConfig(config),
 
